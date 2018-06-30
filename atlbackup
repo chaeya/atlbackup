@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# 백업파일을 보관하고 싶은 디렉토리를 지정합니다.
+backup_dir="/var/atlassian-backup"
+
+# 백업파일을 보관하고 싶은 기간(일)
+duration=30
+
+# 백업대상 아틀라시안 제품의 데이터 디렉토리를 지정합니다.
+jira_backup_dir="/var/atlassian/application-data/jira"
+confluence_backup_dir="/var/atlassian/application-data/confluence/backups"
+bitbucket_backup_dir="/var/atlassian/application-data/bitbucket"
+bamboo_backup_dir="/var/atlassian/application-data/backups"
+
+# 백업대상 postgresql databases
+databases="jira confluence bitbucket bamboo sonar"
+dbuser="DATABASE USER"
+dbpasswd="DATABASE PASSWORD"
+
+### Backup Process for Atlassian Products ###
+# tar command options
+# c - create a new backup archive.
+# v - verbose mode, tar will print what it's doing to the screen.
+# p - preserves the permissions of the files put in the archive for restoration later.
+# z - compress the backup file with 'gzip' to make it smaller.
+# f <filename> - specifies where to store the backup, backup.tar.gz is the filename used in this example. It will be stored in the current working directory, the one you set when you used the cd command.
+#
+
+dateinfo=`date '+%Y-%m-%d-%H%M'`
+bdate=`date '+%Y-%m-%d'`
+
+# Jira
+# 지라의 자동백업파일을 보관하는 경우는 아래 주석 해제
+#today_jira_backup_file=`sudo find ${jira_backup_dir}/ -ctime 0 -name *.zip`
+#/bin/cp "${today_jira_backup_file}" "$backup_dir/jira-${dateinfo}.zip"
+
+tar -cvpzf "$backup_dir/jira-${dateinfo}.tar.gz" ${jira_backup_dir}
+
+# Confluence
+# 컨플루언스의 자동백업파일을 보관하는 경우는 아래 주석 해제
+#today_confluence_backup_file=`sudo find ${confluence_backup_dir}/ -ctime 0 -name *.zip`
+#/bin/cp "${today_confluence_backup_file}" "$backup_dir/confluence-${dateinfo}.zip"
+
+tar -cvpzf "$backup_dir/confluence-${dateinfo}.tar.gz" ${confluence-$}
+
+# Bitbucket
+
+tar -cvpzf "$backup_dir/bitbucket-${dateinfo}.tar.gz" ${bitbucket_backup_dir}
+
+# Bamboo
+# 밤부의 자동백업파일을 보관하는 경우는 아래 주석 해제
+#today_bamboo_backup_file=`sudo find ${bamboo_backup_dir}/ -ctime 0 -name *.zip`
+#/bin/cp "${today_bamboo_backup_file}" "$backup_dir/bamboo-${dateinfo}.zip"
+
+tar -cvpzf "$backup_dir/bamboo-${dateinfo}.tar.gz" ${bamboo_backup_dir}
+
+# postgresql database backup for Atlassian Products
+for i in $databases; do
+        /usr/bin/vacuumdb -z -U ${dbuser} $i >/dev/null 2>&1
+	PGPASSWORD="${dbpasswd}" pg_dump -h localhost -p 5432 -U ${dbuser} -F c -b $i -f $backup_dir/$i-db-${dateinfo}.backup
+#        /usr/bin/pg_dump -U ${dbuser} -F c -b $i -f $backup_dir/$i-db-${dateinfo}.backup
+done
+
+# 백업파일 보존기간이 지난 파일은 삭제
+/usr/bin/find ${backup_dir} -name *.zip -mtime +${duration} -exec rm -f {} \;  
+/usr/bin/find ${backup_dir} -name *.gz -mtime +${duration} -exec rm -f {} \; 
+/usr/bin/find ${backup_dir} -name *.backup -mtime +${duration} -exec rm -f {} \; 
+
+
